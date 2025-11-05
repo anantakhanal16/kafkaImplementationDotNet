@@ -1,0 +1,17 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "composeLaunchAction": "LaunchBrowser",
+      "composeLaunchServiceName": "producerapi",
+      "serviceActions": {
+        "consumerapi": "StartDebugging",
+        "producerapi": "StartDebugging",
+        "kafdrop": "StartWithoutDebugging",
+        "kafka": "StartWithoutDebugging",
+        "zookeeper": "StartWithoutDebugging"
+      }
+    }
+  }
+}
