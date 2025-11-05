@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using ProducerApi.Service;
+using static ProducerApi.Configurations.ProducerApiConfig;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ builder.Services.AddSingleton<KafkaProducerService>();
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.Configure<KafkaSettings>(builder.Configuration.GetSection("Kafka"));
+
 
 builder.WebHost.ConfigureKestrel(options =>
 {

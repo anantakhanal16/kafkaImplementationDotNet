@@ -1,7 +1,8 @@
-﻿using Confluent.Kafka;
-using Microsoft.Extensions.Hosting;
+﻿using System.Text.Json;
+using Confluent.Kafka;
+using Confluent.Kafka.Admin;
 using Microsoft.Extensions.Configuration;
-using System.Text.Json;
+using Microsoft.Extensions.Hosting;
 using ProducerApi.OrderEvent;
 
 namespace ConsumerApi.Controllers
@@ -21,7 +22,10 @@ namespace ConsumerApi.Controllers
             var bootstrapServers =
                 Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS")
                 ?? configuration["Kafka:BootstrapServers"]
-                ?? "localhost:9092"; // fallback for local host
+                ?? "localhost:9092"; // fallback for localhost
+
+            // Step 1: Ensure topic exists before consuming
+            await EnsureTopicExistsAsync(bootstrapServers, topic);
 
             var config = new ConsumerConfig
             {
@@ -38,7 +42,8 @@ namespace ConsumerApi.Controllers
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     var cr = consumer.Consume(stoppingToken);
-                    var order = JsonSerializer.Deserialize<OrderCreatedEvent>(cr.Message.Value);
+                    Console.WriteLine("Message received  " + cr.Message.Value);
+                      var order = JsonSerializer.Deserialize<OrderCreatedEvent>(cr.Message.Value);
 
                     Console.WriteLine($"✅ PaymentService received OrderId: {order.OrderId}, Amount: {order.Amount}");
 
@@ -48,6 +53,52 @@ namespace ConsumerApi.Controllers
             catch (OperationCanceledException)
             {
                 consumer.Close();
+            }
+        }
+
+        private async Task EnsureTopicExistsAsync(string bootstrapServers, string topicName)
+        {
+            var adminConfig = new AdminClientConfig { BootstrapServers = bootstrapServers };
+
+            using var adminClient = new AdminClientBuilder(adminConfig).Build();
+
+            try
+            {
+                var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(5));
+                bool topicExists = metadata.Topics.Any(t => t.Topic == topicName && t.Error.Code == ErrorCode.NoError);
+
+                if (!topicExists)
+                {
+                    Console.WriteLine($"⚙️ Topic '{topicName}' not found. Creating...");
+
+                    await adminClient.CreateTopicsAsync(new[]
+                    {
+                        new TopicSpecification
+                        {
+                            Name = topicName,
+                            NumPartitions = 3,
+                            ReplicationFactor = 1
+                        }
+                    });
+
+                    Console.WriteLine($"✅ Topic '{topicName}' created successfully.");
+                }
+                else
+                {
+                    Console.WriteLine($"✅ Topic '{topicName}' already exists.");
+                }
+            }
+            catch (CreateTopicsException ex)
+            {
+                // If topic already exists, ignore error
+                if (ex.Results.Any(r => r.Error.Code == ErrorCode.TopicAlreadyExists))
+                {
+                    Console.WriteLine($"ℹ️ Topic '{topicName}' already exists (ignored).");
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Error creating topic '{topicName}': {ex.Results[0].Error.Reason}");
+                }
             }
         }
     }
