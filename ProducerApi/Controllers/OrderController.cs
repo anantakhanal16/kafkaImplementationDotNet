@@ -22,8 +22,8 @@ namespace ProducerApi.Controllers
             order.OrderId = Guid.NewGuid();
             order.CreatedAt = DateTime.UtcNow;
 
-           var result=  await kafkaProducer.PublishAsync(order);
-            return Ok(new { message = "Order created and event published.", result });
+            await kafkaProducer.ProduceOrderAsync(order);
+            return Ok(new { message = "Order created and event published." });
         }
     }
 

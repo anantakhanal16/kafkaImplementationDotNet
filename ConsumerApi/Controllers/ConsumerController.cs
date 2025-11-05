@@ -1,13 +1,11 @@
 ﻿using Confluent.Kafka;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using ProducerApi.OrderEvent;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 using System.Text.Json;
+using ProducerApi.OrderEvent;
 
 namespace ConsumerApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     public class KafkaConsumerService : BackgroundService
     {
         private readonly IConfiguration configuration;
@@ -20,9 +18,14 @@ namespace ConsumerApi.Controllers
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var bootstrapServers =
+                Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS")
+                ?? configuration["Kafka:BootstrapServers"]
+                ?? "localhost:9092"; // fallback for local host
+
             var config = new ConsumerConfig
             {
-                BootstrapServers = configuration["Kafka:BootstrapServers"] ?? "localhost:9092",
+                BootstrapServers = bootstrapServers,
                 GroupId = "payment-service-group",
                 AutoOffsetReset = AutoOffsetReset.Earliest
             };
