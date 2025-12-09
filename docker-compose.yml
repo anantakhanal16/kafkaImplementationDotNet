@@ -1,9 +1,7 @@
-version: '3.9'
-
+﻿version: '3.9'
 networks:
   kafka:
     driver: bridge
-
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -15,13 +13,13 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     networks:
       - kafka
-
+      
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
     ports:
-      - "9092:9092"   # host access
-      - "9093:9093"   # internal Docker listener
+      - "9092:9092"
+      - "9093:9093"
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_BROKER_ID: 1
@@ -30,12 +28,12 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # auto-create topics for dev
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     depends_on:
       - zookeeper
     networks:
       - kafka
-
+      
   kafdrop:
     image: obsidiandynamics/kafdrop:3.28.0
     container_name: kafdrop
@@ -48,7 +46,21 @@ services:
       - kafka
     networks:
       - kafka
-
+      
+  producerapi:
+    build:
+      context: .
+      dockerfile: ProducerApi/Dockerfile
+    container_name: producerapi
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+    depends_on:
+      - kafka
+    # No ports exposed - only accessible within the kafka network
+    networks:
+      - kafka
+      
   consumerapi:
     build:
       context: .
@@ -62,18 +74,16 @@ services:
       - "8086:5001"
     networks:
       - kafka
-
-  producerapi:
+      
+  apigateway:
     build:
       context: .
-      dockerfile: ProducerApi/Dockerfile
-    container_name: producerapi
-    environment:
-      ASPNETCORE_ENVIRONMENT: Docker
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9093
-    depends_on:
-      - kafka
+      dockerfile: YarpApiGateway/Dockerfile
     ports:
-      - "8085:5000"
+      - "9001:5002"
+    container_name: apigateway
+    depends_on:
+      - producerapi
+      - consumerapi
     networks:
       - kafka

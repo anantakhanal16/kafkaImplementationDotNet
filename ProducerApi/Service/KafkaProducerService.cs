@@ -35,7 +35,7 @@ namespace ProducerApi.Service
 
             var result = await producer.ProduceAsync(topic, message);
 
-            Console.WriteLine($"📦 Order sent: {order.OrderId} -> Partition {result.Partition}, Offset {result.Offset}");
+            Console.WriteLine($"📦 Sending Order/publishing message: {order.OrderId} -> Partition {result.Partition}, Offset {result.Offset}");
         }
     }
 }
